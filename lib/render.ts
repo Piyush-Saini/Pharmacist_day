@@ -40,29 +40,6 @@ function getBundle(): Promise<string> {
   return bundlePromise;
 }
 
-/**
- * Adds `-movflags +faststart` so the browser can start playing before the whole
- * file has arrived — it moves the MP4 index to the front of the file.
- *
- * `movflags` is an *output* option, so it has to sit immediately before the
- * output path. Prepending it to the argument list instead makes ffmpeg read it
- * as an input option and fail with "Option movflags not found", which is a
- * mistake this file has already made once.
- *
- * If the argument list is not the expected shape, it is returned untouched: a
- * film without faststart still plays, a film that failed to mux does not exist.
- */
-export function withFaststart(type: string, args: string[]): string[] {
-  if (type !== "stitcher" || args.length === 0) return args;
-
-  const output = args[args.length - 1];
-  // The output path is the trailing argument and is never a flag.
-  if (typeof output !== "string" || output.startsWith("-")) return args;
-  if (!/\.mp4$/i.test(output)) return args;
-
-  return [...args.slice(0, -1), "-movflags", "+faststart", output];
-}
-
 interface QueueItem {
   id: string;
   payload: WrappedPayload;
@@ -139,7 +116,9 @@ async function renderOne(payload: WrappedPayload): Promise<void> {
     concurrency: 4,
     imageFormat: "jpeg",
     jpegQuality: 82,
-    ffmpegOverride: ({ type, args }) => withFaststart(type, args),
+    // No ffmpegOverride: Remotion's own stitcher pass already passes
+    // `-movflags faststart`, so the file is progressive-download ready and
+    // adding it again only risks getting the argument order wrong.
     onProgress: ({ progress }) => {
       const percent = Math.round(progress * 100);
       // Writing on every frame would be hundreds of disk writes per film.
