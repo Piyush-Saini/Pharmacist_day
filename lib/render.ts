@@ -21,6 +21,15 @@ import type { WrappedPayload } from "./types";
 
 const COMPOSITION_ID = "PlateFilm";
 
+/**
+ * Path to a Chromium already present in the image.
+ *
+ * Remotion otherwise downloads its own headless shell on first render, which
+ * costs ~150MB and a network round trip at exactly the moment a pharmacist is
+ * waiting. The Docker image installs Chromium and sets CHROME_PATH instead.
+ */
+const browserExecutable = process.env.CHROME_PATH || null;
+
 /** Bundling costs ~40s, so it happens once per process and is reused. */
 let bundlePromise: Promise<string> | null = null;
 
@@ -101,6 +110,7 @@ async function renderOne(payload: WrappedPayload): Promise<void> {
     serveUrl,
     id: COMPOSITION_ID,
     inputProps,
+    browserExecutable,
   });
 
   const outputLocation = videoPath(payload.id);
@@ -112,6 +122,10 @@ async function renderOne(payload: WrappedPayload): Promise<void> {
     codec: "h264",
     outputLocation,
     inputProps,
+    browserExecutable,
+    // Software GL: container hosts have no GPU, and the default renderer can
+    // produce blank or torn frames there.
+    chromiumOptions: { gl: "swangle" },
     // 4 cores locally; Lambda parallelises across workers instead.
     concurrency: 4,
     imageFormat: "jpeg",

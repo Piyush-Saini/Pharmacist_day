@@ -43,6 +43,51 @@ Routes:
 
 Submissions, photos and finished films are written to `.data/` (gitignored).
 
+## Deploying
+
+**This app cannot run on Netlify, or on Vercel's serverless functions.** Not a
+configuration problem — the architecture is incompatible in four separate ways:
+
+| Requirement | Serverless reality |
+|---|---|
+| A render takes ~4 minutes | Netlify Functions time out at 10s (26s for background) |
+| Remotion spawns a real Chromium | Function bundles cap at 250MB unzipped; Chromium alone is ~150MB on top of the 23MB compositor binary |
+| Submissions, photos and films are written to `.data/` | Filesystem is read-only apart from `/tmp`, which is wiped between invocations |
+| The render queue lives in the server process | No process persists between requests |
+
+A Netlify build that goes green would still give you a portal where the form
+loads and **every submission fails**. Making the build pass would hide the
+problem rather than solve it.
+
+### What does work
+
+Any container host — the `Dockerfile` covers all of them, and the code needs no
+changes:
+
+    docker build -t pharmacist-wrapped .
+    docker run -p 3000:3000 -v pharmacist-data:/app/.data pharmacist-wrapped
+
+- **Render.com / Railway / Fly.io** — point at the repo, they detect the
+  Dockerfile. Attach a persistent disk mounted at `/app/.data`, or every film
+  disappears on the next deploy.
+- **A plain VM** (EC2, DigitalOcean) — same image, or just `npm ci && npm run
+  build && npm start`.
+
+Give it at least 2GB RAM and 2 vCPUs. Rendering is CPU-bound; on one shared vCPU
+a film takes closer to ten minutes than four.
+
+The image deliberately keeps dev dependencies, because the render pipeline calls
+Remotion's bundler at runtime and that needs the TypeScript toolchain present.
+`npm ci --omit=dev` produces an image that builds and then fails on first render.
+
+### For the real campaign
+
+The production split is the one PRD §8 describes and is genuinely serverless-
+friendly: the form on Vercel or Netlify, rendering on **Remotion Lambda**, films
+in **S3** behind CloudFront, submissions in **Postgres**. That removes every
+constraint in the table above. It is also where the AWS concurrency quota
+becomes the long-lead item — see [Prototype vs production](#prototype-vs-production).
+
 Preview or render the film on its own:
 
     npm run remotion:studio
