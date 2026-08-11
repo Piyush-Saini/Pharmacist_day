@@ -21,6 +21,9 @@ export interface PlateCopy {
   labelSteps: string;
   labelStadiums: string;
   labelKm: string;
+  /** Indian scale word for figures at or above one crore. */
+  croreWord: string;
+  croreWordShort: string;
 
   hoursFootnote: (years: number) => string;
   peoplePerDay: (value: string) => string;
@@ -57,6 +60,8 @@ const en: PlateCopy = {
   labelSteps: "STEPS",
   labelStadiums: "STADIUMS",
   labelKm: "KM",
+  croreWord: "CRORE",
+  croreWordShort: "Cr",
 
   hoursFootnote: (years) => `MORE THAN ${years} YEARS — NON-STOP`,
   peoplePerDay: (value) => `${value} PEOPLE A DAY`,
@@ -101,6 +106,8 @@ const hi: PlateCopy = {
   labelSteps: "कदम",
   labelStadiums: "स्टेडियम",
   labelKm: "किमी",
+  croreWord: "करोड़",
+  croreWordShort: "करोड़",
 
   hoursFootnote: (years) => `${years} वर्ष से ज़्यादा — लगातार`,
   peoplePerDay: (value) => `${value} लोग रोज़`,

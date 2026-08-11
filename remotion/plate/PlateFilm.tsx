@@ -11,7 +11,7 @@ import {
   useVideoConfig,
 } from "remotion";
 
-import { approxMillions, approxPlus, moreThan } from "../../lib/approx";
+import { approxLarge, approxPlus, moreThan } from "../../lib/approx";
 import { formatIndian } from "../../lib/calc";
 import type { WrappedPayload } from "../../lib/types";
 import { initialsFor } from "../Wrapped";
@@ -570,7 +570,8 @@ const StepsOverlay: React.FC<PlateFilmProps & { font: string }> = ({
             transform: `translateY(${interpolate(stepsEnter, [0, 1], [18, 0])}px)`,
           }}
         >
-          {approxMillions(stats.lifetimeSteps)} {copy.labelSteps}
+          {approxLarge(stats.lifetimeSteps, { croreWord: copy.croreWord })}{" "}
+          {copy.labelSteps}
         </div>
         <div
           style={{
@@ -704,7 +705,10 @@ const SummaryOverlay: React.FC<PlateFilmProps & { font: string }> = ({
       label: copy.labelInteractions,
     },
     steps: {
-      value: approxMillions(stats.lifetimeSteps, true),
+      value: approxLarge(stats.lifetimeSteps, {
+        short: true,
+        croreWord: copy.croreWordShort,
+      }),
       label: copy.labelSteps,
     },
     hours: {

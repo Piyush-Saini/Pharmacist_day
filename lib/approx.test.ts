@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  approxMillions,
+  approxLarge,
   approxPlus,
   floorTo,
   moreThan,
@@ -61,20 +61,39 @@ describe("approxPlus", () => {
   });
 });
 
-describe("approxMillions", () => {
-  it("matches the reference film's steps figure", () => {
-    // 4,000 steps/day × 5,616 days = 22,464,000
-    expect(approxMillions(22_464_000)).toBe("22 MILLION+");
-    expect(approxMillions(22_464_000, true)).toBe("22M+");
+describe("approxLarge", () => {
+  it("uses crore, not the Western million, for the steps figure", () => {
+    // 4,000 steps/day x 5,616 days = 22,464,000 = 2.2464 crore
+    expect(approxLarge(22_464_000)).toBe("2.2 CRORE+");
+    expect(approxLarge(22_464_000, { short: true })).toBe("2.2 Cr+");
   });
 
-  it("falls back to grouped digits below a million", () => {
-    expect(approxMillions(477_360)).toBe("4,70,000+");
-    expect(approxMillions(999_999)).toBe("9,90,000+");
+  it("keeps Indian-grouped digits below one crore", () => {
+    expect(approxLarge(477_360)).toBe("4,70,000+");
+    expect(approxLarge(9_999_999)).toBe("99,00,000+");
   });
 
-  it("handles exactly one million", () => {
-    expect(approxMillions(1_000_000)).toBe("1 MILLION+");
+  it("switches to crore exactly at one crore", () => {
+    expect(approxLarge(10_000_000)).toBe("1 CRORE+");
+  });
+
+  it("drops a trailing .0 rather than printing '2.0 CRORE+'", () => {
+    expect(approxLarge(20_000_000)).toBe("2 CRORE+");
+  });
+
+  it("rounds down, so the claim stays true", () => {
+    // 2.99 crore must not round up to 3
+    expect(approxLarge(29_900_000)).toBe("2.9 CRORE+");
+  });
+
+  it("accepts a localised scale word", () => {
+    expect(approxLarge(22_464_000, { croreWord: "करोड़" })).toBe("2.2 करोड़+");
+  });
+
+  it("never emits the word MILLION", () => {
+    for (const v of [1e6, 1e7, 5e7, 9.9e7]) {
+      expect(approxLarge(v)).not.toContain("MILLION");
+    }
   });
 });
 

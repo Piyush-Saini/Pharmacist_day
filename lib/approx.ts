@@ -49,19 +49,31 @@ export function exactPlus(value: number): string {
   return `${formatIndian(Math.round(value))}+`;
 }
 
+/** One crore — the point at which grouped digits get unwieldy on screen. */
+export const CRORE = 10_000_000;
+
 /**
- * "22 MILLION+" / "22M+" for very large counts.
+ * Large counts in the Indian numbering system.
  *
- * Falls back to `approxPlus` below a million, because "0.4 MILLION" reads worse
- * than "4,00,000+". Note this uses the Western million rather than the Indian
- * lakh/crore — matching the reference film, but see the README: mixing
- * "4,70,000+" (Indian grouping) with "22 MILLION+" (Western scale) in one film
- * is a consistency decision the creative team should confirm.
+ * One convention runs through the whole film: Indian digit grouping below a
+ * crore ("4,70,000+"), and the crore scale word above it ("2.2 CRORE+"). The
+ * reference film mixed Indian grouping with the Western "22 MILLION+"; crore is
+ * both shorter and how the audience actually reads a number that size.
+ *
+ * Rounds down, like every other figure here, so the "+" stays honest.
  */
-export function approxMillions(value: number, short = false): string {
-  if (value < 1_000_000) return approxPlus(value);
-  const millions = Math.floor(value / 1_000_000);
-  return short ? `${millions}M+` : `${millions} MILLION+`;
+export function approxLarge(
+  value: number,
+  opts: { short?: boolean; croreWord?: string } = {},
+): string {
+  const { short = false, croreWord } = opts;
+  if (value < CRORE) return approxPlus(value);
+
+  // Floor to one decimal so "2.2 CRORE+" is never an overstatement.
+  const crores = Math.floor((value / CRORE) * 10) / 10;
+  const digits = Number.isInteger(crores) ? String(crores) : crores.toFixed(1);
+  const word = croreWord ?? (short ? "Cr" : "CRORE");
+  return `${digits} ${word}+`;
 }
 
 /**
