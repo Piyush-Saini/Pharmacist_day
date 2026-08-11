@@ -13,6 +13,7 @@ import { createReadStream, statSync } from "node:fs";
 import { NextResponse } from "next/server";
 import type { ReadableOptions } from "node:stream";
 
+import { contentDisposition } from "@/lib/filename";
 import { getSubmission, isValidId, videoPath } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -40,11 +41,6 @@ function toWebStream(
   });
 }
 
-function safeFilename(name: string): string {
-  const cleaned = name.replace(/[^\p{L}\p{N} _-]/gu, "").trim() || "film";
-  return `${cleaned.replace(/\s+/g, "-")}-wrapped-2026.mp4`;
-}
-
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -68,7 +64,6 @@ export async function GET(
   }
 
   const download = new URL(request.url).searchParams.get("download") === "1";
-  const filename = safeFilename(record.payload.personalisation.fullName);
 
   const headers = new Headers({
     "Content-Type": "video/mp4",
@@ -76,7 +71,11 @@ export async function GET(
     "Cache-Control": "private, max-age=3600",
     // Keeps a shared link out of search results (PRD §13 IT-security review).
     "X-Robots-Tag": "noindex, nofollow",
-    "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${filename}"`,
+    // RFC 5987 — a Devanagari name cannot go into a header value raw.
+    "Content-Disposition": contentDisposition(
+      record.payload.personalisation.fullName,
+      download,
+    ),
   });
 
   // Range support, so mobile browsers can seek without pulling the whole file.

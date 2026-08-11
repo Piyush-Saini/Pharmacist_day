@@ -18,6 +18,7 @@ national campaign needs — see [Prototype vs production](#prototype-vs-producti
 | Calculation engine (nine PRD §7.1 formulas, steps mapping, `earlyCareer`) | Done, 15 tests |
 | Figure formatting — Indian numbering, rounded down | Done, 16 tests |
 | Photo pipeline — on-device resize plus brightness/sharpness checks | Done, 12 tests |
+| Download filenames safe across Indian scripts | Done, 12 tests |
 | Render contract (`WrappedPayload`, PRD §7.5) | Done |
 | Film built on the supplied reference plate, personalised per pharmacist | Done |
 | Intake form — 9 screens, tap-first, autosave and resume | Done |
@@ -29,7 +30,7 @@ national campaign needs — see [Prototype vs production](#prototype-vs-producti
 ## Running it
 
     npm install
-    npm test        # 43 unit tests
+    npm test        # 55 unit tests
     npm run dev     # portal on http://localhost:3000
 
 Routes:
