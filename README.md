@@ -23,14 +23,15 @@ national campaign needs — see [Prototype vs production](#prototype-vs-producti
 | Film built on the supplied reference plate, personalised per pharmacist | Done |
 | Intake form — 9 screens, tap-first, autosave and resume | Done |
 | Submit → render queue → live progress → download and share | Done |
-| Ops dashboard — counts, by state, by MR code | Done |
+| Ops dashboard — counts, by state, by MR code | Done, behind basic auth |
+| Submission rate limiting, MR-aware | Done, 10 tests |
 | Hindi + English, all strings externalised | Done |
 | Self-hosted fonts (Latin + Devanagari + serif) | Done |
 
 ## Running it
 
     npm install
-    npm test        # 55 unit tests
+    npm test        # 65 unit tests
     npm run dev     # portal on http://localhost:3000
 
 Routes:
@@ -39,7 +40,7 @@ Routes:
 |---|---|
 | `/` | The form — landing, language, six questions, photo, details, consent |
 | `/film/[id]` | Processing screen, then the film with download and share |
-| `/admin` | Ops view. **Unauthenticated — add auth before deploying anywhere reachable** |
+| `/admin` | Ops view, behind basic auth. Set `ADMIN_PASSWORD`, or it stays disabled |
 | `/privacy` | Plain-language data note |
 
 Submissions, photos and finished films are written to `.data/` (gitignored).
@@ -69,24 +70,62 @@ problem rather than solve it.
 
 ### What does work
 
-Any container host — the `Dockerfile` covers all of them, and the code needs no
-changes:
+Any container host. The `Dockerfile` covers all of them and the code needs no
+changes.
+
+**Render.com**, using the committed `render.yaml`:
+
+1. **New → Blueprint**, point it at this repo, pick this branch. Render reads
+   `render.yaml`; there are no build settings to fill in.
+2. Set **`ADMIN_PASSWORD`** in the dashboard (Environment tab). Until you do,
+   `/admin` returns 503 — it fails closed rather than open, because it lists
+   every pharmacist's name, pharmacy and city.
+3. Deploy. First build takes ~10 minutes, mostly `npm ci`.
+4. Check `/api/health` returns `{"ok":true}`, then submit a real form.
+
+The blueprint attaches a 10GB disk at `/app/.data`. **Do not remove it** — that
+is where submissions, photos and finished films live, and without it every film
+is lost on the next deploy.
+
+**Railway / Fly.io / a plain VM** — same image, they ignore `render.yaml`:
 
     docker build -t pharmacist-wrapped .
-    docker run -p 3000:3000 -v pharmacist-data:/app/.data pharmacist-wrapped
-
-- **Render.com / Railway / Fly.io** — point at the repo, they detect the
-  Dockerfile. Attach a persistent disk mounted at `/app/.data`, or every film
-  disappears on the next deploy.
-- **A plain VM** (EC2, DigitalOcean) — same image, or just `npm ci && npm run
-  build && npm start`.
+    docker run -p 3000:3000 -e ADMIN_PASSWORD=... \
+      -v pharmacist-data:/app/.data pharmacist-wrapped
 
 Give it at least 2GB RAM and 2 vCPUs. Rendering is CPU-bound; on one shared vCPU
-a film takes closer to ten minutes than four.
+a film takes closer to ten minutes than four, which is a long time to hold
+someone on the processing screen.
 
 The image deliberately keeps dev dependencies, because the render pipeline calls
 Remotion's bundler at runtime and that needs the TypeScript toolchain present.
 `npm ci --omit=dev` produces an image that builds and then fails on first render.
+
+> **The Dockerfile has not been built.** It was written and reviewed but never
+> executed: the sandbox this was developed in blocks Docker Hub's blob CDN, so
+> no image can be pulled or built there. Everything *inside* it — install,
+> build, start, render — is verified natively. Expect the first Render build to
+> be where it gets its first real test.
+
+### Environment variables
+
+| Variable | Required | What it does |
+|---|---|---|
+| `ADMIN_PASSWORD` | To use `/admin` | Enables the ops dashboard behind basic auth. Unset means `/admin` is disabled entirely |
+| `ADMIN_USER` | No | Defaults to `admin` |
+| `CHROME_PATH` | Set by the Dockerfile | Path to Chromium. Unset makes Remotion download its own headless shell mid-render |
+
+### Before you share the link widely
+
+The prototype is safe for one or two people. Two things to know if it goes
+further than that:
+
+- `/admin` is basic auth over HTTPS. Fine for a handful of ops users; the
+  campaign needs real accounts and a record of who viewed what.
+- Submissions are rate limited in-process (40/hour per IP, 150/hour per MR
+  code). Those thresholds are deliberately generous because Indian carriers are
+  heavily CGNAT'd, and they are a speed bump rather than a defence — the real
+  answer is an invisible bot check plus a shared Redis counter (PRD §6.2).
 
 ### For the real campaign
 

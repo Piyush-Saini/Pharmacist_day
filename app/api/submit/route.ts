@@ -14,6 +14,12 @@ import {
   isEarlyCareer,
   resolveStepsPerDay,
 } from "@/lib/calc";
+import {
+  checkRateLimit,
+  clientIp,
+  MAX_PER_IP,
+  MAX_PER_MR,
+} from "@/lib/ratelimit";
 import { enqueueRender } from "@/lib/render";
 import { createSubmission, savePhoto } from "@/lib/store";
 import type { WrappedPayload } from "@/lib/types";
@@ -32,6 +38,9 @@ export async function POST(request: Request) {
   }
 
   const parsed = submitSchema.safeParse(body);
+
+  // Rate limiting runs after parsing so an MR-tagged submission can be given
+  // the higher allowance, and before anything is persisted or queued.
   if (!parsed.success) {
     return NextResponse.json(
       {
@@ -44,6 +53,21 @@ export async function POST(request: Request) {
   }
 
   const { language, inputs, personalisation, consent, photo } = parsed.data;
+
+  // An MR filling forms with pharmacists all afternoon is expected behaviour,
+  // so those sessions are keyed and limited separately from the shared carrier
+  // IP they arrive on.
+  const mrCode = personalisation.mrCode?.trim();
+  const limit = mrCode
+    ? checkRateLimit(`mr:${mrCode}`, MAX_PER_MR)
+    : checkRateLimit(`ip:${clientIp(request.headers)}`, MAX_PER_IP);
+
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "rate_limited", retryAfter: limit.retryAfter },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
+    );
+  }
 
   // A UUID, not a sequence: the finished film is served from a URL keyed to
   // this id with no login, so it must not be guessable from another one

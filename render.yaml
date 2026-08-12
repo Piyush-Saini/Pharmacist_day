@@ -24,6 +24,10 @@ services:
       # dashboard rather than buried in the image.
       - key: CHROME_PATH
         value: /usr/bin/chromium
+      # Set this in the dashboard before the first deploy. Without it /admin
+      # returns 503 — it fails closed rather than exposing personal data.
+      - key: ADMIN_PASSWORD
+        sync: false
     disk:
       name: pharmacist-data
       # Must match the VOLUME in the Dockerfile. Without a disk, every

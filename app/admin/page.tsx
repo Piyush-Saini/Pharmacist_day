@@ -3,9 +3,9 @@ import { listSubmissions } from "@/lib/store";
 /**
  * Ops dashboard (PRD §12).
  *
- * Deliberately unauthenticated in the prototype — it runs on a laptop, not the
- * internet. It must sit behind auth before it is deployed anywhere reachable;
- * it lists every pharmacist's personal data.
+ * Gated by basic auth in middleware.ts, which fails closed when ADMIN_PASSWORD
+ * is unset — this page lists every pharmacist's name, pharmacy and city, so an
+ * unconfigured deploy should lose the dashboard rather than expose it.
  */
 
 export const dynamic = "force-dynamic";
@@ -41,8 +41,8 @@ export default async function AdminPage() {
     <main className="mx-auto w-full max-w-5xl px-6 py-10">
       <h1 className="text-2xl font-bold text-ink">Registrations</h1>
       <p className="mt-1 text-base text-slate-500">
-        Prototype dashboard. Add authentication before deploying this anywhere
-        reachable — it lists personal data.
+        Prototype dashboard, behind basic auth. Fine for a handful of ops users;
+        the campaign needs real accounts and a record of who viewed what.
       </p>
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
