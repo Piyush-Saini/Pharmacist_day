@@ -1,0 +1,32 @@
+# Render.com blueprint.
+#
+# Deploy: New → Blueprint → point at this repo → pick this branch.
+# Render reads the Dockerfile; no build settings to fill in by hand.
+#
+# Other container hosts (Railway, Fly.io) ignore this file and read the
+# Dockerfile directly — nothing here locks the project to Render.
+
+services:
+  - type: web
+    name: pharmacist-wrapped
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    # Rendering is CPU-bound. On a shared-CPU instance a film takes closer to
+    # ten minutes than four, which is a long time to hold a pharmacist on the
+    # processing screen.
+    plan: standard
+    healthCheckPath: /api/health
+    autoDeploy: false
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Set in the Dockerfile too; repeated here so it is visible in the
+      # dashboard rather than buried in the image.
+      - key: CHROME_PATH
+        value: /usr/bin/chromium
+    disk:
+      name: pharmacist-data
+      # Must match the VOLUME in the Dockerfile. Without a disk, every
+      # submission and every finished film is lost on the next deploy.
+      mountPath: /app/.data
+      sizeGB: 10

@@ -47,14 +47,21 @@ Submissions, photos and finished films are written to `.data/` (gitignored).
 ## Deploying
 
 **This app cannot run on Netlify, or on Vercel's serverless functions.** Not a
-configuration problem — the architecture is incompatible in four separate ways:
+configuration problem — the architecture is incompatible.
+
+Two of these are hard walls with no workaround:
 
 | Requirement | Serverless reality |
 |---|---|
-| A render takes ~4 minutes | Netlify Functions time out at 10s (26s for background) |
-| Remotion spawns a real Chromium | Function bundles cap at 250MB unzipped; Chromium alone is ~150MB on top of the 23MB compositor binary |
-| Submissions, photos and films are written to `.data/` | Filesystem is read-only apart from `/tmp`, which is wiped between invocations |
-| The render queue lives in the server process | No process persists between requests |
+| Remotion spawns a real Chromium to draw every frame | Function bundles cap at 250MB unzipped. Chromium is ~150MB on top of the 23MB compositor binary, and it has to be *executable*, not just present |
+| Submissions, photos and finished films are written to `.data/` and served back later | The filesystem is read-only apart from `/tmp`, and `/tmp` is wiped between invocations — the film would not survive to be downloaded |
+
+Two more are real but would only need rework, not a different platform:
+
+| Requirement | Serverless reality |
+|---|---|
+| A render takes ~4 minutes | Synchronous functions cap at 10s (26s on paid plans). Netlify **background functions do allow up to 15 minutes**, so the render itself would fit — but they return 202 immediately and cannot hand the file back, so delivery would have to move to storage anyway |
+| The render queue lives in the server process (`lib/render.ts`) | No process persists between requests; concurrent invocations would each hold their own empty queue |
 
 A Netlify build that goes green would still give you a portal where the form
 loads and **every submission fails**. Making the build pass would hide the
